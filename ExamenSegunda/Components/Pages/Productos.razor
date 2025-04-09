@@ -1,0 +1,201 @@
+﻿@page "/Productos"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using ExamenSegunda.Components.Data
+
+<h3>Productos</h3>
+
+<EditForm Model="@producto" OnValidSubmit="@ProcesarProducto">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="numeroInventario" class="form-label">Número de Inventario:</label>
+        <InputNumber id="numeroInventario" @bind-Value="producto.NumeroInventario" class="form-control" />
+        <ValidationMessage For="@(() => producto.NumeroInventario)" class="text-danger" />
+    </div>
+
+    <div class="mb-3">
+        <label for="nombre" class="form-label">Nombre:</label>
+        <InputText id="nombre" @bind-Value="producto.Nombre" class="form-control" maxlength="200" />
+        <ValidationMessage For="@(() => producto.Nombre)" class="text-danger" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Departamento:</label>
+        <InputRadioGroup @bind-Value="producto.Departamento">
+            @foreach (var depto in departamentos)
+            {
+                <div class="form-check">
+                    <InputRadio id="@depto" class="form-check-input" Value="@depto" />
+                    <label for="@depto" class="form-check-label">@depto</label>
+                </div>
+            }
+        </InputRadioGroup>
+        <ValidationMessage For="@(() => producto.Departamento)" class="text-danger" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger">@mensajeError</div>
+    }
+
+    <button type="submit" class="btn btn-success me-2">@((editando) ? "Actualizar" : "Guardar")</button>
+    @if (editando)
+    {
+        <button type="button" class="btn btn-warning me-2" @onclick="CancelarEdicion">Cancelar</button>
+    }
+</EditForm>
+
+<hr />
+
+<button class="btn btn-secondary me-2" @onclick="AlternarVistaExistencias">
+    @(vistaExistencias ? "Mostrar Lista de Productos" : "Mostrar Existencias")
+</button>
+
+<hr />
+
+@if (vistaExistencias)
+{
+    <h4>Existencias por Departamento</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Departamento</th>
+                <th>Cantidad de Productos</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var depto in departamentos)
+            {
+                <tr>
+                    <td>@depto</td>
+                    <td>@productos.Count(p => p.Departamento == depto)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <h4>Lista de Productos</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Inventario</th>
+                <th>Nombre</th>
+                <th>Departamento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in productos)
+            {
+                <tr>
+                    <td>@p.NumeroInventario</td>
+                    <td>@p.Nombre</td>
+                    <td>@p.Departamento</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" @onclick="() => EditarProducto(p)">Editar</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarProducto(p.NumeroInventario)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+
+@code {
+    private List<Producto> productos = new();
+    private Producto producto = new();
+    private int? numeroInventarioOriginal = null;
+    private bool editando = false;
+    private bool vistaExistencias = false;
+    private string mensajeError = string.Empty;
+    private readonly string[] departamentos = new[] { "Frutas", "Verduras", "Lácteos" };
+
+    private void ProcesarProducto()
+    {
+        mensajeError = string.Empty;
+
+        if ((!editando || (editando && producto.NumeroInventario != numeroInventarioOriginal)) &&
+            productos.Any(p => p.NumeroInventario == producto.NumeroInventario))
+        {
+            mensajeError = "Este número de inventario ya está registrado.";
+        }
+        else
+        {
+            if (editando)
+            {
+                ActualizarProducto();
+            }
+            else
+            {
+                GuardarProducto();
+            }
+        }
+    }
+
+    private void GuardarProducto()
+    {
+        productos.Add(new Producto
+            {
+                NumeroInventario = producto.NumeroInventario,
+                Nombre = producto.Nombre,
+                Departamento = producto.Departamento
+            });
+
+        producto = new Producto();
+    }
+
+    private void ActualizarProducto()
+    {
+
+        var index = productos.FindIndex(p => p.NumeroInventario == numeroInventarioOriginal);
+        if (index != -1)
+        {
+            productos[index] = new Producto
+                {
+                    NumeroInventario = producto.NumeroInventario,
+                    Nombre = producto.Nombre,
+                    Departamento = producto.Departamento
+                };
+        }
+
+        producto = new Producto();
+        numeroInventarioOriginal = null;
+        editando = false;
+    }
+
+    private void EliminarProducto(int numero)
+    {
+        productos.RemoveAll(p => p.NumeroInventario == numero);
+    }
+
+    private void EditarProducto(Producto p)
+    {
+        producto = new Producto
+            {
+                NumeroInventario = p.NumeroInventario,
+                Nombre = p.Nombre,
+                Departamento = p.Departamento
+            };
+        numeroInventarioOriginal = p.NumeroInventario;
+        editando = true;
+    }
+
+    private void CancelarEdicion()
+    {
+        producto = new Producto();
+        numeroInventarioOriginal = null;
+        editando = false;
+        mensajeError = string.Empty;
+    }
+
+    private void AlternarVistaExistencias()
+    {
+        vistaExistencias = !vistaExistencias;
+    }
+}
